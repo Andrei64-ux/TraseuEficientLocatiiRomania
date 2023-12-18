@@ -6,8 +6,8 @@ import { doc, getDoc, setDoc } from "firebase/firestore";
 import { LoginInfoRedirect, RegisterInfoRedirect } from "../interfaces/auth";
 import alreadyExists from "../utils/checkUsername";
 import Router from "next/router";
-import { useAuthState, useSignOut } from "react-firebase-hooks/auth";
-import { signInWithEmailAndPassword } from "firebase/auth";
+import { useAuthState, useSignOut, useSendPasswordResetEmail } from "react-firebase-hooks/auth";
+import { signInWithEmailAndPassword, signOut } from "firebase/auth";
 
 export function useAuth() {
   const [authUser, authLoading, error] = useAuthState(auth);
@@ -145,4 +145,34 @@ export function useLogout() {
   }
 
   return { logout, isLoading };
+}
+
+export function usePasswordReset() {
+  const [sendPasswordResetEmail, isLoading, error] = useSendPasswordResetEmail(auth);
+  const toast = useToast();
+
+  async function sendResetEmail(email) {
+    try {
+      await sendPasswordResetEmail(email);
+      toast({
+        title: 'Reset email sent',
+        description: 'Check your email for password reset instructions.',
+        status: 'success',
+        isClosable: true,
+        position: 'top',
+        duration: 5000,
+      });
+    } catch (error) {
+      toast({
+        title: 'Failed to send reset email',
+        description: error.message,
+        status: 'error',
+        isClosable: true,
+        position: 'top',
+        duration: 5000,
+      });
+    }
+  }
+
+  return { sendResetEmail, isLoading, error };
 }
