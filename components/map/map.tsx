@@ -366,7 +366,6 @@ function getRoute() {
   }, [nature, buildings, museums, shopping, restaurants, mapPoint]);
 
   return (
-    // TODO: Trebuie adaugate in dreapta atractiile
     <>
       <Grid templateColumns="repeat(2, 1fr)" gap={2}>
         <GridItem w="100%" h="10">
