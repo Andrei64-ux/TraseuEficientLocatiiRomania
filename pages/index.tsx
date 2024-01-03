@@ -19,7 +19,10 @@ export default function Home() {
     <div
       className={styles.container}
       style={{
+
         backgroundImage: "url('https://media.tenor.com/57TRBE6D9C8AAAAC/location-graphics.gif')", // Replace with your image path
+
+        backgroundImage: "url('https://media.tenor.com/57TRBE6D9C8AAAAC/location-graphics.gif')",
         backgroundSize: "cover",
         backgroundPosition: "center",
       }}
@@ -54,6 +57,14 @@ export default function Home() {
               <h2 style={{ color: "black", fontWeight: "bold" }}>See tourist spots &rarr;</h2>
               <p style={{ color: "black", fontWeight: "bold" }}>
                 See a map showing all desirable locations tourists usually visit!
+              </p>
+            </div>
+          </Link>
+          <Link href={"/profile_page"}>
+            <div className={styles.card} style={boldBorderStyle}>
+              <h2 style={{ color: "black", fontWeight: "bold" }}>Profile &rarr;</h2>
+              <p style={{ color: "black", fontWeight: "bold" }}>
+                Click to open a blank page
               </p>
             </div>
           </Link>

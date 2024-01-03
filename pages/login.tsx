@@ -9,6 +9,7 @@ import {
   Input,
   Link,
   Text,
+  useToast,
 } from "@chakra-ui/react";
 import { useLogin } from "../hooks/auth";
 import { useForm } from "react-hook-form";
@@ -16,6 +17,7 @@ import { emailValidate, passwordValidate } from "../utils/formValidate";
 import { HOME, SIGN_UP } from "../utils/constants";
 import { LoginInfo } from "../interfaces/auth";
 import NextLink from "next/link";
+import { usePasswordReset } from "../hooks/auth";
 
 export default function Login() {
   const { login, isLoading } = useLogin();
@@ -24,6 +26,10 @@ export default function Login() {
     handleSubmit,
     formState: { errors },
   } = useForm<LoginInfo>();
+    getValues, // Adăugăm aici getValues pentru a-l putea utiliza în cod
+  } = useForm<LoginInfo>();
+  const { sendResetEmail, isLoading: resetLoading } = usePasswordReset();
+  const toast = useToast();
 
   async function handleLogin(data: LoginInfo) {
     login({
@@ -31,6 +37,24 @@ export default function Login() {
       password: data.password,
       redirect: HOME.path,
     });
+  }
+
+  async function handlePasswordReset() {
+    const email = getValues("email"); // Obținem adresa de email folosind getValues
+
+    if (!email) {
+      toast({
+        title: "Complete Email Field",
+        description: "Please enter your email address to reset your password.",
+        status: "warning",
+        isClosable: true,
+        position: "top",
+        duration: 5000,
+      });
+      return;
+    }
+
+    await sendResetEmail(email);
   }
 
   return (
@@ -73,6 +97,16 @@ export default function Login() {
             loadingText="Logging In"
           >
             Log In
+          </Button>
+          <Button
+            mt="4"
+            colorScheme="red"
+            size="md"
+            w="full"
+            isLoading={resetLoading}
+            onClick={handlePasswordReset}
+          >
+            Reset Password
           </Button>
         </form>
 
