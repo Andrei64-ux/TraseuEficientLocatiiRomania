@@ -2,7 +2,7 @@ import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth } from '../config/firebase';
 import { useState, useEffect } from 'react';
 
-export default function EmptyPage() {
+export default function EmptyPage({ attractionsList, setAttractionsList }) {
   const [user, loading] = useAuthState(auth);
   const [editableUser, setEditableUser] = useState(null);
   const [name, setName] = useState('');
@@ -12,6 +12,14 @@ export default function EmptyPage() {
   const [selectedImage, setSelectedImage] = useState(null);
   const [successMessage, setSuccessMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
+
+  // Funcția pentru a afișa lista de atracții
+  useEffect(() => {
+    // Actualizăm starea pentru lista de atracții folosind lista primită din Map
+    if (attractionsList && attractionsList.length > 0) {
+      setAttractionsList(attractionsList);
+    }
+  }, [attractionsList, setAttractionsList]);
 
   useEffect(() => {
     const savedUser = JSON.parse(localStorage.getItem('savedUser'));
@@ -90,6 +98,24 @@ export default function EmptyPage() {
                   {showPassword ? 'Ascunde Parola' : 'Arată Parola'}
                 </button>
               </p>
+              {/* Afișarea listei de atracții */}
+              <div>
+                <h2>Lista de Atracții:</h2>
+                <ul>
+                  {attractionsList && attractionsList.length > 0 ? (
+                    attractionsList.map((attraction, index) => (
+                      <li key={index}>
+                        <p>{attraction.title}</p>
+                        <p>{attraction.address}</p>
+                        {/* Poți adăuga și rating-ul aici */}
+                        {/* <p>Rating: {attraction.rating}</p> */}
+                      </li>
+                    ))
+                  ) : (
+                    <li>No attractions available</li>
+                  )}
+                </ul>
+              </div>
               <button onClick={handleSave} style={{
                   padding: '10px 20px',
                   border: '2px solid #333',
@@ -112,6 +138,7 @@ export default function EmptyPage() {
           )}
         </div>
         <div style={{ flex: '1', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          {/* Adăugăm și partea pentru încărcarea imaginii */}
           <input type="file" accept="image/*" onChange={handleImageChange} />
           {selectedImage && (
             <div style={{ marginTop: '20px' }}>
