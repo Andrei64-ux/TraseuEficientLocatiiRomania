@@ -36,7 +36,7 @@ export default function Form() {
                     if(docSnapshot.exists()) {
                         setDoc(attractionPrefsRef, attractions)
                             .then(() => {
-                                console.log('Prefereinte actractii actualizate cu succes!');
+                                console.log('Preferinte actractii actualizate cu succes!');
                             })
                             .catch((error) => {
                                 console.error('Eroare la actualizare preferinte atractii:', error);
