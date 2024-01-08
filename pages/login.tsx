@@ -24,9 +24,8 @@ export default function Login() {
   const {
     register,
     handleSubmit,
-    formState: { errors },
-  } = useForm<LoginInfo>();
     getValues, // Adăugăm aici getValues pentru a-l putea utiliza în cod
+    formState: { errors },
   } = useForm<LoginInfo>();
   const { sendResetEmail, isLoading: resetLoading } = usePasswordReset();
   const toast = useToast();

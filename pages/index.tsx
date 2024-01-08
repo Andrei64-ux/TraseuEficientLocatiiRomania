@@ -46,12 +46,14 @@ export default function Home() {
         </h1>
 
         <div className={styles.grid} style={{ marginTop: "10%" }}>
-          <a className={styles.card} style={boldBorderStyle}>
-            <h2 style={{ color: "black", fontWeight: "bold" }}>Start your dream trip</h2>
-            <p style={{ color: "black", fontWeight: "bold" }}>
-              Tell us about your interests and we can plan your trip for you
-            </p>
-          </a>
+          <Link href={"/form"}>
+          <div className={styles.card} style={boldBorderStyle}>
+              <h2 style={{ color: "black", fontWeight: "bold" }}>Start your dream trip &rarr;</h2>
+              <p style={{ color: "black", fontWeight: "bold" }}>
+                Tell us about your interests and we can plan your trip for you
+              </p>
+          </div>
+          </Link>
           <Link href={"/map"}>
             <div className={styles.card} style={boldBorderStyle}>
               <h2 style={{ color: "black", fontWeight: "bold" }}>See tourist spots &rarr;</h2>

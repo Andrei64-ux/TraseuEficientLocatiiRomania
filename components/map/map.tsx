@@ -1,6 +1,10 @@
 import React, { useEffect, useRef, useState } from "react";
 import { loadModules } from "esri-loader";
+import { initializeApp } from "firebase/app";
+import { getFirestore, updateDoc, doc, getDoc, setDoc, collection, addDoc } from "firebase/firestore";
 import EmptyPage from '../../pages/profile_page';
+import { auth } from "../../config/firebase";
+
 
 import {
   buildingRenderer,
@@ -27,16 +31,17 @@ import {
 } from "../../utils/constants";
 import { SocketAddress } from "net";
 import { padding } from "@mui/system";
+import { db } from "../../config/firebase";
 
 const LayerToogles = ({
-  nature,
-  museums,
-  shopping,
-  buildings,
-  restaurants,
-  toggleLayer,
-  setAttractionList,
-}: {
+                        nature,
+                        museums,
+                        shopping,
+                        buildings,
+                        restaurants,
+                        toggleLayer,
+                        setAttractionList,
+                      }: {
   nature: boolean;
   museums: boolean;
   shopping: boolean;
@@ -48,28 +53,29 @@ const LayerToogles = ({
   let index = 0;
   const bools = [nature, museums, shopping, buildings, restaurants];
   return (
-    <Stack direction="row" marginTop={"1rem"}>
-      {layersInfo.map(({ layerName, layerLabel }) => (
-        <>
-          <FormLabel>{layerLabel}</FormLabel>
-          <Switch
-            colorScheme="teal"
-            size="md"
-            isChecked={bools[index++]}
-            onChange={() => {
-              toggleLayer(layerName);
-              setAttractionList([]);
-            }}
-          />
-        </>
-      ))}
-    </Stack>
+      <Stack direction="row" marginTop={"1rem"}>
+        {layersInfo.map(({ layerName, layerLabel }) => (
+            <>
+              <FormLabel>{layerLabel}</FormLabel>
+              <Switch
+                  colorScheme="teal"
+                  size="md"
+                  isChecked={bools[index++]}
+                  onChange={() => {
+                    toggleLayer(layerName);
+                    setAttractionList([]);
+                  }}
+              />
+            </>
+        ))}
+      </Stack>
   );
 };
 
 const AttractionDiv = () => {};
 
 let point = false;
+
 
 function Map() {
   let view: any;
@@ -80,7 +86,7 @@ function Map() {
   const [activate, setActivate] = useState(false)
 
   const { nature, museums, shopping, buildings, restaurants, toggleLayer } =
-    useLayers();
+      useLayers();
 
   useEffect(() => {
     const setMap = async () => {
@@ -97,20 +103,20 @@ function Map() {
         PopupTemplate,
         Legend,
       ] = await loadModules(
-        [
-          "esri/views/MapView",
-          "esri/Map",
-          "esri/config",
-          "esri/layers/FeatureLayer",
-          "esri/widgets/Search",
-          "esri/Graphic",
-          "esri/rest/route",
-          "esri/rest/support/RouteParameters",
-          "esri/rest/support/FeatureSet",
-          "esri/PopupTemplate",
-          "esri/widgets/Legend",
-        ],
-        { css: true }
+          [
+            "esri/views/MapView",
+            "esri/Map",
+            "esri/config",
+            "esri/layers/FeatureLayer",
+            "esri/widgets/Search",
+            "esri/Graphic",
+            "esri/rest/route",
+            "esri/rest/support/RouteParameters",
+            "esri/rest/support/FeatureSet",
+            "esri/PopupTemplate",
+            "esri/widgets/Legend",
+          ],
+          { css: true }
       );
 
       esriConfig.apiKey = "AAPK082c5d1531b4485d805759f4a12464aaUErOxtUbhCpQYXT6hUqgsB93IDNdPCs-ixE7KigFyDM91mi2wKodZSkcvp7hh111"
@@ -133,7 +139,7 @@ function Map() {
       view.ui.add(search, "top-right");
 
       const routeUrl =
-        "https://route-api.arcgis.com/arcgis/rest/services/World/Route/NAServer/Route_World";
+          "https://route-api.arcgis.com/arcgis/rest/services/World/Route/NAServer/Route_World";
 
       view.on("click", function (event: { mapPoint: any }) {
         mapPointt = event.mapPoint;
@@ -168,28 +174,32 @@ function Map() {
         return movingPoint;
       }
 
-      function moveAlongRoute(routeGeometry: { paths: any; spatialReference: any; }, movingPoint: { geometry: { type: string; x: any; y: any; spatialReference: any; }; }, view: { graphics: { add: (arg0: any) => void; remove: (arg0: any) => void; }; }) {
+      function moveAlongRoute(
+          routeGeometry: { paths: any; spatialReference: any },
+          movingPoint: { geometry: { type: string; x: any; y: any; spatialReference: any } },
+          view: { graphics: { add: (arg0: any) => void; remove: (arg0: any) => void } }
+      ) {
         const lineSymbol = {
           type: "simple-line",
           color: [5, 150, 255],
           width: 3,
         };
-      
+
         const routeGraphic = new Graphic({
           geometry: routeGeometry,
           symbol: lineSymbol,
         });
-      
+
         view.graphics.add(routeGraphic);
-      
+
         let pathIndex = 0;
         let pointIndex = 0;
         const routeCoordinates = routeGeometry.paths;
-      
+
         function animateAlongRoute() {
           if (pathIndex < routeCoordinates.length) {
             const currentPath = routeCoordinates[pathIndex];
-      
+
             if (pointIndex === 0 && pathIndex === 0) {
               const startPoint = {
                 type: "point",
@@ -200,56 +210,96 @@ function Map() {
               movingPoint.geometry = startPoint;
               view.graphics.add(movingPoint);
             }
-      
+
             const [x, y] = currentPath[pointIndex];
+
             const pathPoint = {
               type: "point",
               x: x,
               y: y,
               spatialReference: routeGeometry.spatialReference,
             };
-      
+
             movingPoint.geometry = pathPoint;
-      
+
+            const user = auth.currentUser;
+            if (user) {
+              const userId = user.uid;
+
+              const movingPointCoordinatesRef = doc(db, 'users', userId, 'movingpoint', 'coordinates'); // Actualizare referință document
+
+              const coordinates = {
+                latitude: y,
+                longitude: x,
+              };
+
+              getDoc(movingPointCoordinatesRef)
+                  .then((docSnapshot) => {
+                    if (docSnapshot.exists()) {
+                      // Documentul există deja, actualizați coordonatele
+                      setDoc(movingPointCoordinatesRef, coordinates)
+                          .then(() => {
+                            console.log('Coordonate actualizate cu succes!');
+                          })
+                          .catch((error) => {
+                            console.error('Eroare la actualizarea coordonatelor:', error);
+                          });
+                    } else {
+                      // Documentul nu există, creați unul nou cu coordonatele
+                      setDoc(movingPointCoordinatesRef, coordinates)
+                          .then(() => {
+                            console.log('Coordonate create cu succes!');
+                          })
+                          .catch((error) => {
+                            console.error('Eroare la crearea coordonatelor:', error);
+                          });
+                    }
+                  })
+                  .catch((error) => {
+                    console.error('Eroare la verificarea coordonatelor:', error);
+                  });
+            } else {
+              console.error('Utilizatorul nu este autentificat!');
+            }
             pointIndex++;
-      
+
             if (pointIndex === currentPath.length) {
               pointIndex = 0;
               pathIndex++;
             }
-      
+
             setTimeout(animateAlongRoute, 100);
           } else {
             view.graphics.remove(movingPoint);
           }
         }
-      
+
         animateAlongRoute();
         setActivate(false);
       }
-      
+
 
       function getRoute() {
         console.log('point = ', point);
         if (point) {
-        let features = view.graphics.toArray().filter((feature: any) => feature.geometry.x);
-        const routeParams = new RouteParameters({
-          stops: new FeatureSet({ features: features }),
-          returnDirections: false,
-        });
-
-        route
-          .solve(routeUrl, routeParams)
-          .then(function (data: { routeResults: any[] }) {
-            data.routeResults.forEach(function (result: { route: any }) {
-              const routeGeometry = result.route.geometry;
-              const movingPoint = createMovingPoint();
-                moveAlongRoute(routeGeometry, movingPoint, view);
-            });
-          })
-          .catch(function (error: any) {
-            console.log(error);
+          let features = view.graphics.toArray().filter((feature: any) => feature.geometry.x);
+          const routeParams = new RouteParameters({
+            stops: new FeatureSet({ features: features }),
+            returnDirections: false,
           });
+
+          route
+              .solve(routeUrl, routeParams)
+              .then(function (data: { routeResults: any[] }) {
+                data.routeResults.forEach(function (result: { route: any }) {
+                  const routeGeometry = result.route.geometry;
+                  const movingPoint = createMovingPoint();
+                  moveAlongRoute(routeGeometry, movingPoint, view);
+                });
+              })
+              .catch(function (error: any) {
+                console.log(error);
+              });
         }
       }
 
@@ -285,43 +335,69 @@ function Map() {
         if (event.action.id === "add") {
           const title = view.popup.title;
           const address = view.popup.content.viewModel.content.substring(
-            0,
-            view.popup.content.viewModel.content.indexOf("<")
+              0,
+              view.popup.content.viewModel.content.indexOf("<")
           );
           const rating = view.popup.content.viewModel.content.substring(
-            view.popup.content.viewModel.content.indexOf(">") + 1,
-            view.popup.content.viewModel.content.length
+              view.popup.content.viewModel.content.indexOf(">") + 1,
+              view.popup.content.viewModel.content.length
           );
-      
+
           setAttractionList((oldarr) => {
             const newAttraction = { title: title, address: address, rating: rating };
             const updatedList = [...oldarr, newAttraction];
-            const attractionListJSON = JSON.stringify(updatedList, null, 2); // Indentare de 2 spații
-          
+            const attractionListJSON = JSON.stringify(updatedList, null, 2);
+
             if (point) {
-              const blob = new Blob([attractionListJSON], { type: 'application/json' });
-              const url = URL.createObjectURL(blob);
-              const a = document.createElement('a');
-              a.href = url;
-              a.download = 'attractionList.json';
-              document.body.appendChild(a);
-              a.click();
-              document.body.removeChild(a);
-              URL.revokeObjectURL(url);
+              const user = auth.currentUser;
+              if (user) {
+                const userId = user.uid;
+                const attractionsCollectionRef = collection(db, 'users', userId, 'routes');
+
+                // Verificare existenta colectie
+                const attractionsRef = doc(db, 'users', userId);
+                getDoc(attractionsRef)
+                    .then((docSnapshot) => {
+                      if (!docSnapshot.exists()) {
+                        // Cream colectia daca nu exista
+                        setDoc(attractionsRef, { attractions: [] })
+                            .then(() => {
+                              console.log('Colectie attractions creata cu succes!');
+                            })
+                            .catch((error) => {
+                              console.error('Eroare la crearea colectiei attractions:', error);
+                            });
+                      }
+                    })
+                    .catch((error) => {
+                      console.error('Eroare la verificarea colectiei attractions:', error);
+                    });
+
+                // Adaugare lista de atractii in Firestore
+                addDoc(attractionsCollectionRef, { attractions: updatedList })
+                    .then((docRef) => {
+                      console.log('Atractii adaugate cu succes in colectie!');
+                    })
+                    .catch((error) => {
+                      console.error('Eroare la adaugarea atractiilor:', error);
+                    });
+              } else {
+                console.error('Utilizatorul nu este autentificat!');
+              }
             }
-          
+
             return updatedList;
           });
-      
+
           test();
         }
       });
-      
-      
-      
+
+
+
       let element = document.createElement("div");
       element.className =
-        "esri-icon-close-circled esri-widget--button esri-widget esri-interactive";
+          "esri-icon-close-circled esri-widget--button esri-widget esri-interactive";
       element.addEventListener("click", function (evt) {
         setAttractionList([]);
         view.graphics.removeAll();
@@ -372,36 +448,36 @@ function Map() {
       });
 
       const legend = new Legend(
-        {
-          view: view,
-          layerInfos: [
-            {
-              layer: natureLayer,
-              title: "Natural Attractions",
+          {
+            view: view,
+            layerInfos: [
+              {
+                layer: natureLayer,
+                title: "Natural Attractions",
+              },
+              {
+                layer: muzeumsLayer,
+                title: "Museums",
+              },
+              {
+                layer: buildingsLayer,
+                title: "Famous Buildings",
+              },
+              {
+                layer: shoppingLayer,
+                title: "Shopping Places",
+              },
+              {
+                layer: restaurantsLayer,
+                title: "Restaurants",
+              },
+            ],
+            layout: "horizontal",
+            style: {
+              layout: "auto",
+              width: "20px",
             },
-            {
-              layer: muzeumsLayer,
-              title: "Museums",
-            },
-            {
-              layer: buildingsLayer,
-              title: "Famous Buildings",
-            },
-            {
-              layer: shoppingLayer,
-              title: "Shopping Places",
-            },
-            {
-              layer: restaurantsLayer,
-              title: "Restaurants",
-            },
-          ],
-          layout: "horizontal",
-          style: {
-            layout: "auto",
-            width: "20px",
           },
-        },
       );
 
       view.ui.add(legend, "bottom-left");
@@ -417,80 +493,80 @@ function Map() {
   }, [nature, buildings, museums, shopping, restaurants, mapPoint]);
 
   return (
-    <>
+      <>
         <Grid templateColumns="repeat(2, 1fr)" gap={2}>
-        <GridItem w="100%" h="10">
-          <div
-            style={{
-              height: "80vh",
-              aspectRatio: "3/2",
-            }}
-            ref={MapElement}
-          />
-          <LayerToogles
-            nature={nature}
-            buildings={buildings}
-            museums={museums}
-            shopping={shopping}
-            restaurants={restaurants}
-            toggleLayer={toggleLayer}
-            setAttractionList={setAttractionList}
-          />
-          <Button colorScheme="blue" onClick={() => point = true}>
-            Simulate
-          </Button>
-        </GridItem>
-        <GridItem w="100%" h="10">
-          <div
-            style={{
-              paddingRight: "32px",
-              paddingTop: "16px",
-            }}
-          >
-            <h1
-              style={{
-                display: "flex",
-                fontSize: "30px",
-                justifyContent: "center",
-                width: "100%",
-              }}
+          <GridItem w="100%" h="10">
+            <div
+                style={{
+                  height: "80vh",
+                  aspectRatio: "3/2",
+                }}
+                ref={MapElement}
+            />
+            <LayerToogles
+                nature={nature}
+                buildings={buildings}
+                museums={museums}
+                shopping={shopping}
+                restaurants={restaurants}
+                toggleLayer={toggleLayer}
+                setAttractionList={setAttractionList}
+            />
+            <Button colorScheme="blue" onClick={() => point = true}>
+              Simulate
+            </Button>
+          </GridItem>
+          <GridItem w="100%" h="10">
+            <div
+                style={{
+                  paddingRight: "32px",
+                  paddingTop: "16px",
+                }}
             >
-              Attractions
-            </h1>
-            <div>
-              {attractionsList.map(({ title, address, rating }) => (
-                <Box
-                  w="100%"
-                  margin={4}
-                  fontWeight="semibold"
-                  mt={3}
-                  border={"1px"}
-                  p={5}
-                >
-                  <h5
-                    style={{
-                      display: "flex",
-                      justifyContent: "center",
-                    }}
-                  >
-                    {title}
-                  </h5>
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "center",
-                      width: "100%",
-                    }}
-                  >
-                    {address}
-                  </div>
-                </Box>
-              ))}
+              <h1
+                  style={{
+                    display: "flex",
+                    fontSize: "30px",
+                    justifyContent: "center",
+                    width: "100%",
+                  }}
+              >
+                Attractions
+              </h1>
+              <div>
+                {attractionsList.map(({ title, address }) => (
+                    <Box
+                        w="100%"
+                        margin={4}
+                        fontWeight="semibold"
+                        mt={3}
+                        border={"1px"}
+                        p={5}
+                    >
+                      <h5
+                          style={{
+                            display: "flex",
+                            justifyContent: "center",
+                          }}
+                      >
+                        {title}
+                      </h5>
+                      <div
+                          style={{
+                            display: "flex",
+                            justifyContent: "center",
+                            width: "100%",
+                          }}
+                      >
+                        {address}
+                      </div>
+                    </Box>
+                ))}
+              </div>
             </div>
-          </div>
-        </GridItem>
-      </Grid>
-    </>
+          </GridItem>
+        </Grid>
+      </>
   );
 }
 export default Map;
