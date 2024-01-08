@@ -1,4 +1,8 @@
-import { useState } from "react";
+import {useEffect, useState} from "react";
+import { getFirestore, updateDoc, doc, getDoc, setDoc } from "firebase/firestore";
+import { auth } from "../config/firebase";
+import { db } from "../config/firebase";
+
 import {
   BUILDINGS_LAYER,
   MUSEUMS_LAYER,
@@ -8,12 +12,45 @@ import {
 } from "../utils/constants";
 
 export function useLayers() {
+
   const [nature, setNature] = useState(true);
   const [museums, setMuseums] = useState(true);
   const [shopping, setShopping] = useState(true);
   const [buildings, setBuildings] = useState(true);
   const [restaurants, setRestaurants] = useState(true);
 
+  useEffect(() => {
+    const fetchData = async () => {
+      const user = auth.currentUser;
+
+      if (user) {
+        const userId = user.uid;
+        const attractionPrefsRef = doc(db, 'users', userId, 'attractionPrefs', 'attractions');
+
+        try {
+          const docSnapshot = await getDoc(attractionPrefsRef);
+
+          if (docSnapshot.exists()) {
+            const preferencesData = docSnapshot.data();
+
+            setNature(preferencesData.nature);
+            setMuseums(preferencesData.museums);
+            setShopping(preferencesData.shopping);
+            setBuildings(preferencesData.buildings);
+            setRestaurants(preferencesData.restaurants);
+
+            console.log('Preferinte actractii existente:', preferencesData);
+          } else {
+            console.log('Nicio preferinta actratie gasita pentru utilizatorul curent.');
+          }
+        } catch (error) {
+          console.error('Eroare la verificare preferinte atractii:', error);
+        }
+      }
+    };
+    fetchData();
+  }, []);
+  
   function toggleLayer(layerName: string) {
     switch (layerName) {
       case NATURE_LAYER:
