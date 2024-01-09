@@ -22,9 +22,6 @@ export default function EmptyPage({ attractionsList, setAttractionsList }) {
   const [errorMessage, setErrorMessage] = useState('');
   const [routeHistory, setRouteHistory] = useState([]);
 
-  const [totalRating, setTotalRating] = useState(0);
-  const [attractionCount, setAttractionCount] = useState(0);
-
   const toast = useToast()
 
   const totalStars = 5;
@@ -46,10 +43,13 @@ export default function EmptyPage({ attractionsList, setAttractionsList }) {
             if (routeData && routeData.attractions && routeData.attractions.length > 0) {
               const routeAttractions = routeData.attractions;
 
+              let totalRating = 0;
+              let attractionCount = 0;
+
               let attractions = routeAttractions.map((attraction, index) => {
                 const rating = parseFloat(attraction.rating.split(":")[1]);
-                setTotalRating((prevTotal) => prevTotal + rating);
-                setAttractionCount((prevCount) => prevCount + 1);
+                totalRating += rating;
+                attractionCount += 1;
 
                 return (
                     <ListItem key={`attraction-${index}`}>
@@ -60,6 +60,8 @@ export default function EmptyPage({ attractionsList, setAttractionsList }) {
 
               const averageRating = totalRating / attractionCount;
               const goldenStars = Math.floor(averageRating);
+
+              console.log(`Total Rating = ${totalRating}\nAttraction Count = ${attractionCount}\nAvarage Rating = ${averageRating}\nGolden Stars = ${goldenStars}`)
 
               const routeElement = (
                 <VStack key={`route-${routeCounter}`} alignItems='flex-start' borderWidth='1px' p='4' borderRadius='md'>
