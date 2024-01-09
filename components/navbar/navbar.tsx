@@ -1,10 +1,11 @@
-import { ReactNode } from "react";
+import {ReactNode, useState} from "react";
 import {
   Box,
   Flex,
   Avatar,
   HStack,
   IconButton,
+  Image,
   Button,
   Menu,
   MenuButton,
@@ -78,6 +79,11 @@ const UserInfo = ({ user }: { user: any }) => {
         {user?.username}
       </MenuButton>
       <MenuList>
+        <MenuItem>
+          <Link href="/profile_page" passHref>
+            Profile
+          </Link>
+        </MenuItem>
         <MenuItem onClick={() => logout()}>Log Out</MenuItem>
       </MenuList>
     </Menu>
@@ -87,6 +93,12 @@ const UserInfo = ({ user }: { user: any }) => {
 export default function Navbar() {
   const { isOpen, onOpen, onClose } = useDisclosure();
   const { user, isLoading, error } = useAuth();
+  const [logo, setLogo] = useState("/vercel_white.svg"); // Initial logo
+  const handleColorModeToggle = () => {
+    setLogo((prevLogo) =>
+        prevLogo === "/vercel.svg" ? "/vercel_white.svg" : "/vercel.svg"
+    );
+  };
 
   return (
     <div className={navStyles.mobileNav}>
@@ -100,7 +112,9 @@ export default function Navbar() {
             onClick={isOpen ? onClose : onOpen}
           />
           <HStack spacing={8} alignItems={"center"}>
-            <Box>Logo</Box>
+            <Box>
+              <Image src={logo} alt='Logo' boxSize='100px'/>
+            </Box>
             <HStack
               as={"nav"}
               spacing={4}
@@ -112,7 +126,7 @@ export default function Navbar() {
                 </NavLink>
               ))}
             </HStack>
-            <ColorThemeSwitch />
+            <ColorThemeSwitch onToggleLogo={handleColorModeToggle}/>
           </HStack>
           <Flex alignItems={"center"} justifyContent={"center"}>
             {isLoading && <Spinner />}

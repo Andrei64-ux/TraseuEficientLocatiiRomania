@@ -6,7 +6,9 @@ import {
 } from "@chakra-ui/react";
 import { MoonIcon, SunIcon } from "@chakra-ui/icons";
 
-type ColorModeSwitcherProps = Omit<IconButtonProps, "aria-label">;
+type ColorModeSwitcherProps = Omit<IconButtonProps, "aria-label"> & {
+  onToggleLogo?: () => void;
+};
 
 export const ColorThemeSwitch = (props: ColorModeSwitcherProps) => {
   const { toggleColorMode } = useColorMode();
@@ -20,7 +22,11 @@ export const ColorThemeSwitch = (props: ColorModeSwitcherProps) => {
       variant="ghost"
       color="current"
       marginLeft="2"
-      onClick={toggleColorMode}
+      onClick={() => {
+        toggleColorMode();
+        // Call the onToggleLogo prop if provided
+        props.onToggleLogo && props.onToggleLogo();
+      }}
       icon={<SwitchIcon />}
       aria-label={`Switch to ${text} mode`}
       {...props}
