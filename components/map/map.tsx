@@ -513,7 +513,7 @@ function Map() {
                 setAttractionList={setAttractionList}
             />
             <Button colorScheme="blue" onClick={() => point = true}>
-              Simulate
+              Simulate & Save
             </Button>
           </GridItem>
           <GridItem w="100%" h="10">

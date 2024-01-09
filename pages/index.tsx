@@ -66,21 +66,12 @@ export default function Home() {
             <div className={styles.card} style={boldBorderStyle}>
               <h2 style={{ color: "black", fontWeight: "bold" }}>Profile &rarr;</h2>
               <p style={{ color: "black", fontWeight: "bold" }}>
-                Click to open a blank page
+                Click to open profile page
               </p>
             </div>
           </Link>
         </div>
       </main>
-
-      <footer className={styles.footer} style={{ backgroundColor: "black", padding: "10px", width: "100%", textAlign: "center" }}>
-        <span style={{ color: "white" }}>
-          Powered by{" "}
-          <span className={styles.logo}>
-            <Image src="/vercel.svg" alt="Vercel Logo" width={72} height={16} />
-          </span>
-        </span>
-      </footer>
     </div>
   );
 }

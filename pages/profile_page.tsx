@@ -1,6 +1,13 @@
 import { useAuthState } from 'react-firebase-hooks/auth';
-import { auth } from '../config/firebase';
 import { useState, useEffect } from 'react';
+import { storage, db, auth} from "../config/firebase";
+import { getDownloadURL, ref, uploadString } from "firebase/storage";
+import { collection, doc, getDoc, getDocs, setDoc, updateDoc } from 'firebase/firestore';
+import { updateEmail } from 'firebase/auth';
+import { VStack, Text, Input, Button, Image, Flex, Box, ListItem, UnorderedList, Center } from "@chakra-ui/react";
+
+
+
 
 export default function EmptyPage({ attractionsList, setAttractionsList }) {
   const [user, loading] = useAuthState(auth);
@@ -12,145 +19,197 @@ export default function EmptyPage({ attractionsList, setAttractionsList }) {
   const [selectedImage, setSelectedImage] = useState(null);
   const [successMessage, setSuccessMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
+  const [routeHistory, setRouteHistory] = useState([]);
 
-  // Funcția pentru a afișa lista de atracții
+  // Funcția pentru a afișa lista de atracții pentru fiecare rută separat
   useEffect(() => {
-    // Actualizăm starea pentru lista de atracții folosind lista primită din Map
-    if (attractionsList && attractionsList.length > 0) {
-      setAttractionsList(attractionsList);
-    }
-  }, [attractionsList, setAttractionsList]);
+    const fetchData = async () => {
+      try {
+        if (auth.currentUser) {
+          const userId = auth.currentUser.uid;
+          const routesRef = collection(db, 'users', userId, 'routes');
+          const routesSnapshot = await getDocs(routesRef);
 
-  useEffect(() => {
-    const savedUser = JSON.parse(localStorage.getItem('savedUser'));
+          let routeCounter = 1;
+          let history = [];
 
-    if (user) {
-      setEditableUser(user);
-      setName(savedUser?.displayName || user.displayName);
-      setEmail(savedUser?.email || user.email);
-      setPassword(savedUser?.password || ''); // Actualizăm parola din starea utilizatorului
-      const savedImage = localStorage.getItem('selectedImage');
-      if (savedImage) {
-        setSelectedImage(savedImage);
+          routesSnapshot.forEach((routeDoc) => {
+            const routeData = routeDoc.data();
+            if (routeData && routeData.attractions && routeData.attractions.length > 0) {
+              const routeAttractions = routeData.attractions;
+
+              let attractions = routeAttractions.map((attraction, index) => (
+                <ListItem key={`attraction-${index}`}>{`${attraction.title} - ${attraction.address} - ${parseFloat(attraction.rating.split(":")[1]).toFixed(2)}`}</ListItem>
+              ));
+
+              const routeElement = (
+                <VStack key={`route-${routeCounter}`} alignItems='flex-start' borderWidth='1px' p='4' borderRadius='md'>
+                  <Text fontSize='lg' fontWeight='bold'>{`Traseul ${routeCounter}:`}</Text>
+                  <UnorderedList style={{ padding: '8px' }}>{attractions}</UnorderedList>
+              </VStack>
+
+              );
+
+              history.push(routeElement);
+              routeCounter++;
+            }
+          });
+
+          setRouteHistory(history);
+        }
+      } catch (error) {
+        console.error('Eroare la accesarea datelor utilizatorului:', error);
       }
-    }
-  }, [user]);
-
-  const handleSave = () => {
-    const savedSuccessfully = true; // Înlocuiește cu logica ta reală de salvare
-
-    if (savedSuccessfully) {
-      setSuccessMessage('Modificarile s-au realizat cu succes.');
-      setTimeout(() => {
-        setSuccessMessage('');
-      }, 3000);
-    } else {
-      setErrorMessage('Nu s-au putut salva modificările. Te rog să încerci din nou.');
-      setTimeout(() => {
-        setErrorMessage('');
-      }, 3000);
-    }
-
-    setEditableUser({
-      ...editableUser,
-      displayName: name,
-      email: email,
-      password: password,
-    });
-
-    localStorage.setItem('savedUser', JSON.stringify({ displayName: name, email: email, password: password }));
-  };
-
-  const handleImageChange = (event) => {
-    const file = event.target.files[0];
-    const reader = new FileReader();
-
-    reader.onloadend = () => {
-      setSelectedImage(reader.result);
-      localStorage.setItem('selectedImage', reader.result);
     };
 
-    if (file) {
-      reader.readAsDataURL(file);
+    fetchData();
+  }, []);
+  
+
+  useEffect(() => {
+    if (user) {
+      setEditableUser(user);
+      setEmail(user?.email || user.email);
+  
+      const imageRef = ref(storage, `${user.uid}/avatar`);
+  
+      getDownloadURL(imageRef)
+        .then((imageUrl) => {
+          setSelectedImage(imageUrl);
+          localStorage.setItem('selectedImage', imageUrl);
+        })
+        .catch((error) => {
+          console.error('Eroare la obtinerea imaginii din Storage:', error);
+        });
+  
+      const userDocRef = doc(db, 'users', auth.currentUser.uid);
+      getDoc(userDocRef)
+        .then((userDocSnapshot) => {
+          if (userDocSnapshot.exists()) {
+            const userData = userDocSnapshot.data();
+            setName(userData.name || ''); // Setăm numele din Firestore sau lăsăm câmpul gol dacă nu există
+          } else {
+            setName(''); // Dacă nu există documentul pentru utilizator, lăsăm câmpul gol
+          }
+        })
+        .catch((error) => {
+          console.error('Eroare la obținerea datelor utilizatorului:', error);
+        });
+    }
+  }, [user]);
+  
+
+
+  const handleSave = async () => {
+    if (auth.currentUser)
+      try {
+        const userDocRef = doc(db, 'users', auth.currentUser.uid);
+        // Verificăm dacă există deja un document pentru utilizatorul curent
+        const userSnapshot = await getDoc(userDocRef);
+        
+        if (userSnapshot.exists()) {
+          // Dacă documentul există, actualizăm câmpul "name"
+          await updateDoc(userDocRef, { name: name });
+        } else {
+          // Dacă nu există, creăm un nou document cu câmpul "name"
+          await setDoc(userDocRef, { name: name });
+        }
+    
+        setSuccessMessage('Numele a fost salvat cu succes!');
+      } catch (error) {
+        console.error('Eroare la salvarea numelui:', error);
+        setErrorMessage('A apărut o eroare la salvarea numelui. Vă rugăm să încercați din nou.');
+      }
+  };
+  
+
+  
+const handleImageChange = (event) => {
+  const file = event.target.files[0];
+  const reader = new FileReader();
+
+  reader.onloadend = async () => {
+    try {
+      if (file) {
+        const imageRef = ref(storage, `${auth.currentUser.uid}/avatar`);
+        
+        // Încărcarea imaginii în Firebase Storage
+        await uploadString(imageRef, reader.result, 'data_url');
+        
+        // Obținerea URL-ului pentru imaginea încărcată
+        const imageUrl = await getDownloadURL(imageRef);
+
+        // Actualizarea câmpului "avatar" în documentul utilizatorului curent din Firestore
+        const userDocRef = doc(db, 'users', auth.currentUser.uid);
+        await updateDoc(userDocRef, { avatar: imageUrl });
+
+        // Salvarea URL-ului imaginii în localStorage
+        localStorage.setItem('selectedImage', imageUrl);
+        setSelectedImage(imageUrl);
+
+        console.log('Imagine incarcata si salvata cu succes!');
+      }
+    } catch (error) {
+      console.error('Eroare la incarcarea sau salvarea imaginii:', error);
     }
   };
 
-  return (
-    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-      <div style={{ display: 'flex', alignItems: 'center', width: '80%' }}>
-        <div style={{ flex: '1', textAlign: 'left' }}>
+  if (file) {
+    reader.readAsDataURL(file);
+  }
+};
+  
+
+return (
+  <Flex justifyContent='center' alignItems='center'>
+    <Box width='80%' display='flex'>
+      <Box flex='1' paddingRight='20px'>
+        <VStack textAlign='left' marginBottom='20px'>
           {editableUser ? (
-            <div>
-              <p>
-                Nume: <input type="text" value={name} onChange={(e) => setName(e.target.value)} />
-              </p>
-              <p>
-                Email: <input type="text" value={email} onChange={(e) => setEmail(e.target.value)} />
-              </p>
-              <p>
-                Parolă: 
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
-                <button onClick={() => setShowPassword(!showPassword)}>
-                  {showPassword ? 'Ascunde Parola' : 'Arată Parola'}
-                </button>
-              </p>
-              {/* Afișarea listei de atracții */}
-              <div>
-                <h2>Lista de Atracții:</h2>
-                <ul>
-                  {attractionsList && attractionsList.length > 0 ? (
-                    attractionsList.map((attraction, index) => (
-                      <li key={index}>
-                        <p>{attraction.title}</p>
-                        <p>{attraction.address}</p>
-                        {/* Poți adăuga și rating-ul aici */}
-                        {/* <p>Rating: {attraction.rating}</p> */}
-                      </li>
-                    ))
-                  ) : (
-                    <li>No attractions available</li>
-                  )}
-                </ul>
-              </div>
-              <button onClick={handleSave} style={{
-                  padding: '10px 20px',
-                  border: '2px solid #333',
-                  borderRadius: '5px',
-                  cursor: 'pointer',
-                  background: '#fff',
-                  color: '#333',
-                  fontSize: '16px',
-                  marginTop: '10px',
-                }}>Salvează</button>
+            <VStack marginBottom='20px'>
+              <Input type='file' accept='image/*' width='80%' onChange={handleImageChange} />
+              {selectedImage && (
+                <Image src={selectedImage} alt='Selected' width='200px' height='200px' borderRadius='50%' />
+              )}
+              <VStack marginBottom='30px'>
+                <Input type='text' value={name} onChange={(e) => setName(e.target.value)} width='100%' padding='8px' />
+                <Box marginBottom='30px'>
+                  <Text marginBottom='15px'>Email:</Text>
+                  <Text width='100%' padding='8px' display='inline-block' border='1px solid #ccc' borderRadius='5px'>{email}</Text>
+                </Box>
+              </VStack>
+              <Button
+                onClick={handleSave}
+                padding='10px 20px'
+                border='2px solid #333'
+                borderRadius='5px'
+                cursor='pointer'
+                background='#fff'
+                color='#333'
+                fontSize='16px'
+                marginTop='10px'
+              >
+                Salveaza
+              </Button>
               {successMessage && (
-                <p style={{ color: 'green' }}>{successMessage}</p>
+                <Text color='green'>{successMessage}</Text>
               )}
               {errorMessage && (
-                <p style={{ color: 'red' }}>{errorMessage}</p>
+                <Text color='red'>{errorMessage}</Text>
               )}
-            </div>
+            </VStack>
           ) : (
-            <p>{loading ? 'Încărcare...' : 'Utilizatorul nu este autentificat'}</p>
+            <Text>{loading ? 'Loading...' : 'Utilizatorul nu este autentificat'}</Text>
           )}
-        </div>
-        <div style={{ flex: '1', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-          {/* Adăugăm și partea pentru încărcarea imaginii */}
-          <input type="file" accept="image/*" onChange={handleImageChange} />
-          {selectedImage && (
-            <div style={{ marginTop: '20px' }}>
-              <img
-                src={selectedImage}
-                alt="Selected"
-                style={{ width: '200px', height: '200px', borderRadius: '50%' }}
-              />
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
+        </VStack>
+      </Box>
+      <Box flex='1' textAlign='left'>
+        <Text fontSize='2xl'>Istoric trasee:</Text>
+        <VStack id='routeHistory' spacing='4' alignItems='flex-start' mt='4'>
+          {routeHistory.length > 0 ? routeHistory : <Text>Nu există trasee salvate</Text>}
+        </VStack>
+      </Box>
+    </Box>
+  </Flex>
+);
 }
