@@ -93,10 +93,10 @@ const UserInfo = ({ user }: { user: any }) => {
 export default function Navbar() {
   const { isOpen, onOpen, onClose } = useDisclosure();
   const { user, isLoading, error } = useAuth();
-  const [logo, setLogo] = useState("/vercel_white.svg"); // Initial logo
+  const [logo, setLogo] = useState("/logo_white.svg"); // Initial logo
   const handleColorModeToggle = () => {
     setLogo((prevLogo) =>
-        prevLogo === "/vercel.svg" ? "/vercel_white.svg" : "/vercel.svg"
+        prevLogo === "/logo_black.svg" ? "/logo_white.svg" : "/logo_black.svg"
     );
   };
 
@@ -113,7 +113,7 @@ export default function Navbar() {
           />
           <HStack spacing={8} alignItems={"center"}>
             <Box>
-              <Image src={logo} alt='Logo' boxSize='100px'/>
+              <Image src={logo} alt='Logo' boxSize='200px'/>
             </Box>
             <HStack
               as={"nav"}
