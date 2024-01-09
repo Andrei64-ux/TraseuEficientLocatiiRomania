@@ -4,7 +4,8 @@ import { storage, db, auth} from "../config/firebase";
 import { getDownloadURL, ref, uploadString } from "firebase/storage";
 import { collection, doc, getDoc, getDocs, setDoc, updateDoc } from 'firebase/firestore';
 import { updateEmail } from 'firebase/auth';
-import { VStack, Text, Input, Button, Image, Flex, Box, ListItem, UnorderedList, Center } from "@chakra-ui/react";
+import { VStack, Text, Input, Button, Image, Flex, Box, ListItem, UnorderedList, Center, useToast , Avatar,  HStack, Icon} from "@chakra-ui/react";
+import { StarIcon } from "@chakra-ui/icons";
 
 
 
@@ -20,6 +21,13 @@ export default function EmptyPage({ attractionsList, setAttractionsList }) {
   const [successMessage, setSuccessMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [routeHistory, setRouteHistory] = useState([]);
+
+  const [totalRating, setTotalRating] = useState(0);
+  const [attractionCount, setAttractionCount] = useState(0);
+
+  const toast = useToast()
+
+  const totalStars = 5;
 
   // Funcția pentru a afișa lista de atracții pentru fiecare rută separat
   useEffect(() => {
@@ -38,13 +46,35 @@ export default function EmptyPage({ attractionsList, setAttractionsList }) {
             if (routeData && routeData.attractions && routeData.attractions.length > 0) {
               const routeAttractions = routeData.attractions;
 
-              let attractions = routeAttractions.map((attraction, index) => (
-                <ListItem key={`attraction-${index}`}>{`${attraction.title} - ${attraction.address} - ${parseFloat(attraction.rating.split(":")[1]).toFixed(2)}`}</ListItem>
-              ));
+              let attractions = routeAttractions.map((attraction, index) => {
+                const rating = parseFloat(attraction.rating.split(":")[1]);
+                setTotalRating((prevTotal) => prevTotal + rating);
+                setAttractionCount((prevCount) => prevCount + 1);
+
+                return (
+                    <ListItem key={`attraction-${index}`}>
+                      {`${attraction.title} - ${attraction.address} - ${rating.toFixed(2)}`}
+                    </ListItem>
+                );
+              });
+
+              const averageRating = totalRating / attractionCount;
+              const goldenStars = Math.floor(averageRating);
 
               const routeElement = (
                 <VStack key={`route-${routeCounter}`} alignItems='flex-start' borderWidth='1px' p='4' borderRadius='md'>
-                  <Text fontSize='lg' fontWeight='bold'>{`Traseul ${routeCounter}:`}</Text>
+                  <Text fontSize='lg' fontWeight='bold'>{`Traseul ${routeCounter}`}</Text>
+                  <Flex alignItems="center">
+                    <Text fontSize='md' marginRight="2">{`Scor ${averageRating.toFixed(2)} `}</Text>
+                    <HStack spacing={1}>
+                      {[...Array(goldenStars)].map((_, index) => (
+                          <Icon key={`golden-star-${index}`} as={StarIcon} color="yellow.400" />
+                      ))}
+                      {[...Array(totalStars - goldenStars)].map((_, index) => (
+                          <Icon key={`gray-star-${index}`} as={StarIcon} color="gray.300" />
+                      ))}
+                    </HStack>
+                  </Flex>
                   <UnorderedList style={{ padding: '8px' }}>{attractions}</UnorderedList>
               </VStack>
 
@@ -114,11 +144,21 @@ export default function EmptyPage({ attractionsList, setAttractionsList }) {
           // Dacă nu există, creăm un nou document cu câmpul "name"
           await setDoc(userDocRef, { name: name });
         }
-    
-        setSuccessMessage('Numele a fost salvat cu succes!');
+
+        toast({
+          title: 'Numele a fost salvat cu succes!',
+          status: 'success',
+          duration: 9000,
+          isClosable: true,
+        })
       } catch (error) {
         console.error('Eroare la salvarea numelui:', error);
-        setErrorMessage('A apărut o eroare la salvarea numelui. Vă rugăm să încercați din nou.');
+        toast({
+          title: 'Numele nu a fost salvat!',
+          status: 'error',
+          duration: 9000,
+          isClosable: true,
+        })
       }
   };
   
@@ -169,10 +209,11 @@ return (
             <VStack marginBottom='20px'>
               <Input type='file' accept='image/*' width='80%' onChange={handleImageChange} />
               {selectedImage && (
-                <Image src={selectedImage} alt='Selected' width='200px' height='200px' borderRadius='50%' />
+                //<Image src={selectedImage} alt='Selected' boxSize='200px' borderRadius='full' />
+                <Avatar size='2xl' src={selectedImage} />
               )}
               <VStack marginBottom='30px'>
-                <Input type='text' value={name} onChange={(e) => setName(e.target.value)} width='100%' padding='8px' />
+                <Input type='text' placeholder={"Write your Name here"} value={name} onChange={(e) => setName(e.target.value)} width='100%' padding='8px' />
                 <Box marginBottom='30px'>
                   <Text marginBottom='15px'>Email:</Text>
                   <Text width='100%' padding='8px' display='inline-block' border='1px solid #ccc' borderRadius='5px'>{email}</Text>
